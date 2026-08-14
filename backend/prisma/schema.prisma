@@ -1,0 +1,121 @@
+// Prisma schema for Me&Myself.
+// Connection URL lives in prisma.config.ts (loaded from DATABASE_URL) — Prisma 7 convention.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ThemeName {
+  LIGHT
+  DARK
+  SEPIA
+  FOREST
+  SOLARIZED
+  NORD
+  ROSE
+  HIGH_CONTRAST
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+enum FontFamily {
+  SYSTEM
+  MONTSERRAT
+  LORA
+  JETBRAINS_MONO
+  NUNITO
+}
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  passwordHash    String
+  displayName     String?
+  themePreference ThemeName  @default(LIGHT)
+  fontPreference  FontFamily @default(SYSTEM)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  entries      JournalEntry[]
+  journals     Journal[]
+  moodLogs     MoodLog[]
+  chatSessions ChatSession[]
+}
+
+model Journal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries JournalEntry[]
+
+  @@index([userId, createdAt])
+}
+
+model JournalEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journalId   String
+  journal     Journal  @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  title       String?
+  contentJson Json
+  contentText String
+  moodRating  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  moodLog      MoodLog?
+  chatSessions ChatSession[]
+
+  @@index([userId, createdAt])
+  @@index([journalId, createdAt])
+}
+
+model MoodLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  rating    Int
+  note      String?
+  entryId   String?  @unique
+  entry     JournalEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryId   String?
+  entry     JournalEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id            String      @id @default(uuid())
+  sessionId     String
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role          ChatRole
+  content       String
+  flaggedCrisis Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+}

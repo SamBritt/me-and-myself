@@ -1,0 +1,254 @@
+@import 'tailwindcss';
+
+:root {
+  --color-bg: #fdfcfb;
+  --color-surface: #ffffff;
+  --color-text: #1f1b24;
+  --color-text-muted: #6b6375;
+  --color-primary: #7c3aed;
+  --color-highlight: #fef08a;
+  --color-border: #e5e4e7;
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+.font-montserrat {
+  --font-sans: 'Montserrat', system-ui, sans-serif;
+}
+
+.font-lora {
+  --font-sans: 'Lora', system-ui, serif;
+}
+
+.font-jetbrains_mono {
+  --font-sans: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.font-nunito {
+  --font-sans: 'Nunito', system-ui, sans-serif;
+}
+
+.theme-dark {
+  --color-bg: #16171d;
+  --color-surface: #1f2028;
+  --color-text: #f3f4f6;
+  --color-text-muted: #9ca3af;
+  --color-primary: #c084fc;
+  --color-highlight: #78350f;
+  --color-border: #2e303a;
+}
+
+.theme-sepia {
+  --color-bg: #f4ecd8;
+  --color-surface: #faf3e3;
+  --color-text: #433422;
+  --color-text-muted: #7c6b52;
+  --color-primary: #a1662f;
+  --color-highlight: #e8d5a3;
+  --color-border: #ddc9a3;
+}
+
+.theme-forest {
+  --color-bg: #101a14;
+  --color-surface: #16241b;
+  --color-text: #e5efe7;
+  --color-text-muted: #9fb3a4;
+  --color-primary: #4ade80;
+  --color-highlight: #2f5233;
+  --color-border: #23392a;
+}
+
+.theme-solarized {
+  --color-bg: #fdf6e3;
+  --color-surface: #eee8d5;
+  --color-text: #073642;
+  --color-text-muted: #657b83;
+  --color-primary: #268bd2;
+  --color-highlight: #ffe9a8;
+  --color-border: #d3cbb7;
+}
+
+.theme-nord {
+  --color-bg: #2e3440;
+  --color-surface: #3b4252;
+  --color-text: #eceff4;
+  --color-text-muted: #a3b3cc;
+  --color-primary: #88c0d0;
+  --color-highlight: #4c566a;
+  --color-border: #434c5e;
+}
+
+.theme-rose {
+  --color-bg: #fdf2f5;
+  --color-surface: #fff8fa;
+  --color-text: #4a2c33;
+  --color-text-muted: #9c6b78;
+  --color-primary: #db2777;
+  --color-highlight: #fbcfe8;
+  --color-border: #f3d9e0;
+}
+
+.theme-high_contrast {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-text: #000000;
+  --color-text-muted: #3d3d3d;
+  --color-primary: #0000ee;
+  --color-highlight: #ffff00;
+  --color-border: #000000;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-primary: var(--color-primary);
+  --color-highlight: var(--color-highlight);
+  --color-border: var(--color-border);
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+#app {
+  min-height: 100svh;
+}
+
+/* Cross-fade themed surfaces on theme switch instead of an instant snap. Scoped to .theme-ready
+   (added to <html> right after the app mounts, see main.ts) so the very first paint — going from
+   unstyled to styled — snaps instantly instead of visibly fading in. */
+.theme-ready * {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* Browsers don't give <button> a pointer cursor by default (only <a> gets that) — Tailwind's
+   preflight doesn't add it either, so every clickable button in the app was showing the default
+   arrow cursor. Global, so it covers native <button>s and the shared IconButton/ToggleButton/
+   ActionButton components without touching each one. */
+button:not(:disabled),
+[role='button'] {
+  cursor: pointer;
+}
+
+/* Scrollbars, themed */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-bg);
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 8px;
+  border: 2px solid var(--color-bg);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
+}
+
+/* Route transitions (App.vue) */
+.route-enter-active,
+.route-leave-active {
+  transition: opacity 0.15s ease;
+}
+.route-enter-from,
+.route-leave-to {
+  opacity: 0;
+}
+
+/* Sidebar slide transition (JournalEditorView.vue) */
+.sidebar-enter-active,
+.sidebar-leave-active {
+  transition:
+    width 0.25s ease,
+    opacity 0.2s ease;
+  overflow: hidden;
+}
+.sidebar-enter-from,
+.sidebar-leave-to {
+  width: 0;
+  opacity: 0;
+}
+.sidebar-enter-to,
+.sidebar-leave-from {
+  width: 18rem;
+  opacity: 1;
+}
+
+/* Entry list add/remove transitions (EntryListSidebar.vue, JournalListView.vue) */
+.list-enter-active,
+.list-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(6px);
+}
+.list-leave-active {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+.list-move {
+  transition: transform 0.2s ease;
+}
+
+/* Journal card grid add/remove transitions (JournalsListView.vue) */
+.grid-list-enter-active,
+.grid-list-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.grid-list-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.grid-list-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.grid-list-move {
+  transition: transform 0.2s ease;
+}
+
+/* Tailwind's preflight resets ul/ol to list-style: none with no padding, which also strips list
+   markers inside the Tiptap editor content — bulletList/orderedList work correctly at the
+   ProseMirror document level, they just render with no visible bullets/numbers without this. */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5rem;
+}
+.ProseMirror ul {
+  list-style: disc;
+}
+.ProseMirror ul ul {
+  list-style: circle;
+}
+.ProseMirror ul ul ul {
+  list-style: square;
+}
+.ProseMirror ol {
+  list-style: decimal;
+}
+.ProseMirror li > p {
+  margin: 0;
+}

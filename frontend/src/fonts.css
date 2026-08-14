@@ -1,0 +1,27 @@
+/* Self-hosted (via @fontsource) so switching fonts never makes a request to Google — the files
+   are only actually downloaded by the browser once a font-family they define gets rendered, so
+   importing every weight for every option up front costs nothing until a user picks it. */
+
+@import '@fontsource/montserrat/400.css';
+@import '@fontsource/montserrat/400-italic.css';
+@import '@fontsource/montserrat/500.css';
+@import '@fontsource/montserrat/600.css';
+@import '@fontsource/montserrat/700.css';
+
+@import '@fontsource/lora/400.css';
+@import '@fontsource/lora/400-italic.css';
+@import '@fontsource/lora/500.css';
+@import '@fontsource/lora/600.css';
+@import '@fontsource/lora/700.css';
+
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/400-italic.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@fontsource/jetbrains-mono/700.css';
+
+@import '@fontsource/nunito/400.css';
+@import '@fontsource/nunito/400-italic.css';
+@import '@fontsource/nunito/500.css';
+@import '@fontsource/nunito/600.css';
+@import '@fontsource/nunito/700.css';

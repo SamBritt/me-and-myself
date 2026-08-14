@@ -1,0 +1,30 @@
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Dependencies
+node_modules/
+
+# Env files (never commit secrets — .env.example files are intentionally kept)
+.env
+.env.*
+!.env.example
+
+# Build output
+frontend/dist/
+backend/dist/
+
+# Generated Prisma client (regenerated via `prisma generate`)
+backend/src/generated/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Prisma agent-skill scaffolding (regenerable via `prisma init`)
+backend/.claude/skills
+backend/.windsurf/skills
+backend/.agents/skills
+backend/skills-lock.json

@@ -1,0 +1,114 @@
+scalar DateTime
+scalar JSON
+
+enum ThemeName {
+  LIGHT
+  DARK
+  SEPIA
+  FOREST
+  SOLARIZED
+  NORD
+  ROSE
+  HIGH_CONTRAST
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+enum FontFamily {
+  SYSTEM
+  MONTSERRAT
+  LORA
+  JETBRAINS_MONO
+  NUNITO
+}
+
+type User {
+  id: ID!
+  email: String!
+  displayName: String
+  themePreference: ThemeName!
+  fontPreference: FontFamily!
+  createdAt: DateTime!
+}
+
+type Journal {
+  id: ID!
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  entryCount: Int!
+}
+
+type JournalEntry {
+  id: ID!
+  title: String
+  contentJson: JSON!
+  contentText: String!
+  moodRating: Int
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type MoodLog {
+  id: ID!
+  date: DateTime!
+  rating: Int!
+  note: String
+}
+
+type ChatMessage {
+  id: ID!
+  role: ChatRole!
+  content: String!
+  flaggedCrisis: Boolean!
+  createdAt: DateTime!
+}
+
+type ChatSession {
+  id: ID!
+  title: String
+  entryId: ID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  messages: [ChatMessage!]!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+type Query {
+  health: Boolean!
+  me: User
+  journals: [Journal!]!
+  journal(id: ID!): Journal
+  journalEntries(journalId: ID!, limit: Int, offset: Int): [JournalEntry!]!
+  journalEntry(id: ID!): JournalEntry
+  moodLogs(from: DateTime, to: DateTime): [MoodLog!]!
+  chatSessions: [ChatSession!]!
+  chatSession(id: ID!): ChatSession
+}
+
+type Mutation {
+  signup(email: String!, password: String!, displayName: String): AuthPayload!
+  login(email: String!, password: String!): AuthPayload!
+  updateThemePreference(theme: ThemeName!): User!
+  updateFontPreference(font: FontFamily!): User!
+
+  createJournal(name: String!): Journal!
+  deleteJournal(id: ID!): Boolean!
+
+  createJournalEntry(journalId: ID!, title: String, contentJson: JSON!, contentText: String!, moodRating: Int): JournalEntry!
+  updateJournalEntry(id: ID!, title: String, contentJson: JSON, contentText: String, moodRating: Int): JournalEntry!
+  deleteJournalEntry(id: ID!): Boolean!
+
+  upsertMoodLog(date: DateTime!, rating: Int!, note: String): MoodLog!
+
+  startChatSession(entryId: ID): ChatSession!
+  sendChatMessage(sessionId: ID!, message: String!): ChatMessage!
+  deleteChatSession(id: ID!): Boolean!
+}
