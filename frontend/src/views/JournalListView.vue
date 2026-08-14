@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { useJournalStore } from '../stores/journal'
+import { useJournalStore, type EntrySummary } from '../stores/journal'
 import { urqlClient } from '../graphql/client'
 import { JournalDocument } from '../graphql/operations/journals'
 import ActionButton from '../components/ui/ActionButton.vue'
@@ -18,6 +18,33 @@ const router = useRouter()
 const journalId = computed(() => String(route.params.journalId))
 const journalName = ref<string | null>(null)
 const confirmDeleteId = ref<string | null>(null)
+
+interface MonthGroup {
+  key: string
+  label: string
+  entries: EntrySummary[]
+}
+
+// Entries arrive newest-first (createdAt desc), so consecutive same-month entries are always
+// adjacent — grouping is just a single linear pass, no sorting/bucketing needed.
+const monthGroups = computed<MonthGroup[]>(() => {
+  const groups: MonthGroup[] = []
+  for (const entry of journal.entries) {
+    const date = new Date(entry.createdAt)
+    const key = `${date.getFullYear()}-${date.getMonth()}`
+    const current = groups[groups.length - 1]
+    if (current?.key === key) {
+      current.entries.push(entry)
+    } else {
+      groups.push({
+        key,
+        label: date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+        entries: [entry],
+      })
+    }
+  }
+  return groups
+})
 
 watch(
   journalId,
@@ -72,7 +99,7 @@ async function onConfirmDelete(id: string) {
       </div>
     </header>
 
-    <div class="mx-auto max-w-2xl px-6 py-8">
+    <div class="mx-auto max-w-3xl px-6 py-8">
       <div class="mb-6 flex items-center justify-between">
         <h2 v-if="journalName" class="text-xl font-semibold">{{ journalName }}</h2>
         <Skeleton v-else class="h-7 w-40" />
@@ -91,18 +118,32 @@ async function onConfirmDelete(id: string) {
         No entries yet. Start writing whenever you're ready.
       </p>
 
-      <TransitionGroup v-else name="list" tag="ul" class="relative flex flex-col gap-2">
-        <li v-for="entry in journal.entries" :key="entry.id">
-          <EntryCard
-            :entry="entry"
-            :confirming="confirmDeleteId === entry.id"
-            @open="router.push(`/journals/${journalId}/${entry.id}`)"
-            @ask-delete="onAskDelete(entry.id)"
-            @confirm-delete="onConfirmDelete(entry.id)"
-            @cancel-delete="onCancelDelete()"
-          />
-        </li>
-      </TransitionGroup>
+      <!-- Month rail + entries share one grid so each month's rail segment stretches (default
+           align-items: stretch) to the exact height of that month's entry stack, keeping the
+           line continuous instead of two independently-sized columns drifting apart. The line
+           itself is a `border-right`, not an absolutely-positioned width-1px div — the latter
+           lands on a fractional device-pixel offset here and anti-aliases into near invisibility;
+           `border` is special-cased by browsers to always snap to a crisp physical pixel. -->
+      <div v-else class="grid grid-cols-[5rem_1fr] gap-x-4 gap-y-2">
+        <template v-for="group in monthGroups" :key="group.key">
+          <div class="border-r border-border pr-4">
+            <span class="block text-right text-xs font-medium text-text-muted">{{ group.label }}</span>
+          </div>
+
+          <TransitionGroup name="list" tag="ul" class="relative flex flex-col gap-2">
+            <li v-for="entry in group.entries" :key="entry.id">
+              <EntryCard
+                :entry="entry"
+                :confirming="confirmDeleteId === entry.id"
+                @open="router.push(`/journals/${journalId}/${entry.id}`)"
+                @ask-delete="onAskDelete(entry.id)"
+                @confirm-delete="onConfirmDelete(entry.id)"
+                @cancel-delete="onCancelDelete()"
+              />
+            </li>
+          </TransitionGroup>
+        </template>
+      </div>
     </div>
   </main>
 </template>
