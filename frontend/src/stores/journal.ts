@@ -10,6 +10,7 @@ import {
 } from '../graphql/operations/journal'
 
 const AUTOSAVE_DELAY_MS = 1200
+const PAGE_SIZE = 20
 
 export interface EntrySummary {
   id: string
@@ -45,6 +46,8 @@ function emptyDraft(journalId: string | null = null): Draft {
 export const useJournalStore = defineStore('journal', () => {
   const entries = ref<EntrySummary[]>([])
   const loadingEntries = ref(false)
+  const loadingMore = ref(false)
+  const hasMoreEntries = ref(true)
 
   const draft = ref<Draft>(emptyDraft())
   const dirty = ref(false)
@@ -53,19 +56,49 @@ export const useJournalStore = defineStore('journal', () => {
 
   let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 
-  async function fetchEntries(journalId: string) {
+  // How many entries have actually been fetched from the server so far — tracked separately from
+  // entries.value.length, since that array also gets mutated locally (unshift on create, filter
+  // on delete). Using its length as the next page's offset would silently skip or re-fetch rows
+  // the moment a create/delete happens between page loads.
+  let fetchedCount = 0
+
+  async function fetchEntries(journalId: string, limit = PAGE_SIZE) {
     loadingEntries.value = true
+    hasMoreEntries.value = true
     try {
       const result = await urqlClient
         .query(
           JournalEntriesDocument,
-          { journalId, limit: 50, offset: 0 },
+          { journalId, limit, offset: 0 },
           { requestPolicy: 'network-only' },
         )
         .toPromise()
-      entries.value = result.data?.journalEntries ?? []
+      const page = result.data?.journalEntries ?? []
+      entries.value = page
+      fetchedCount = page.length
+      hasMoreEntries.value = page.length === limit
     } finally {
       loadingEntries.value = false
+    }
+  }
+
+  async function fetchMoreEntries(journalId: string) {
+    if (loadingEntries.value || loadingMore.value || !hasMoreEntries.value) return
+    loadingMore.value = true
+    try {
+      const result = await urqlClient
+        .query(
+          JournalEntriesDocument,
+          { journalId, limit: PAGE_SIZE, offset: fetchedCount },
+          { requestPolicy: 'network-only' },
+        )
+        .toPromise()
+      const page = result.data?.journalEntries ?? []
+      entries.value = [...entries.value, ...page]
+      fetchedCount += page.length
+      hasMoreEntries.value = page.length === PAGE_SIZE
+    } finally {
+      loadingMore.value = false
     }
   }
 
@@ -180,11 +213,14 @@ export const useJournalStore = defineStore('journal', () => {
   return {
     entries,
     loadingEntries,
+    loadingMore,
+    hasMoreEntries,
     draft,
     dirty,
     saving,
     loadingDraft,
     fetchEntries,
+    fetchMoreEntries,
     startNewDraft,
     loadDraft,
     updateDraftContent,

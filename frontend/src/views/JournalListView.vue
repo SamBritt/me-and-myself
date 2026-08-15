@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useJournalStore, type EntrySummary } from '../stores/journal'
@@ -18,6 +18,7 @@ const router = useRouter()
 const journalId = computed(() => String(route.params.journalId))
 const journalName = ref<string | null>(null)
 const confirmDeleteId = ref<string | null>(null)
+const sentinel = ref<HTMLElement | null>(null)
 
 interface MonthGroup {
   key: string
@@ -64,6 +65,30 @@ watch(
   },
   { immediate: true },
 )
+
+// The sentinel element doesn't exist in the DOM until the loading/empty template branches
+// resolve to the entry-list branch, so the observer is (re)attached reactively via `watch`
+// rather than once in onMounted.
+let observer: IntersectionObserver | null = null
+
+watch(sentinel, (el, previousEl) => {
+  if (previousEl && observer) observer.unobserve(previousEl)
+  if (el) {
+    if (!observer) {
+      observer = new IntersectionObserver(
+        ([intersectionEntry]) => {
+          if (intersectionEntry.isIntersecting) journal.fetchMoreEntries(journalId.value)
+        },
+        { rootMargin: '400px' },
+      )
+    }
+    observer.observe(el)
+  }
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+})
 
 function onLogout() {
   auth.logout()
@@ -124,26 +149,36 @@ async function onConfirmDelete(id: string) {
            itself is a `border-right`, not an absolutely-positioned width-1px div — the latter
            lands on a fractional device-pixel offset here and anti-aliases into near invisibility;
            `border` is special-cased by browsers to always snap to a crisp physical pixel. -->
-      <div v-else class="grid grid-cols-[5rem_1fr] gap-x-4 gap-y-2">
-        <template v-for="group in monthGroups" :key="group.key">
-          <div class="border-r border-border pr-4">
-            <span class="block text-right text-xs font-medium text-text-muted">{{ group.label }}</span>
-          </div>
+      <template v-else>
+        <div class="grid grid-cols-[5rem_1fr] gap-x-4 gap-y-2">
+          <template v-for="group in monthGroups" :key="group.key">
+            <div class="border-r border-border pr-4">
+              <span class="block text-right text-xs font-medium text-text-muted">{{ group.label }}</span>
+            </div>
 
-          <TransitionGroup name="list" tag="ul" class="relative flex flex-col gap-2">
-            <li v-for="entry in group.entries" :key="entry.id">
-              <EntryCard
-                :entry="entry"
-                :confirming="confirmDeleteId === entry.id"
-                @open="router.push(`/journals/${journalId}/${entry.id}`)"
-                @ask-delete="onAskDelete(entry.id)"
-                @confirm-delete="onConfirmDelete(entry.id)"
-                @cancel-delete="onCancelDelete()"
-              />
-            </li>
-          </TransitionGroup>
-        </template>
-      </div>
+            <TransitionGroup name="list" tag="ul" class="relative flex flex-col gap-2">
+              <li v-for="entry in group.entries" :key="entry.id">
+                <EntryCard
+                  :entry="entry"
+                  :confirming="confirmDeleteId === entry.id"
+                  @open="router.push(`/journals/${journalId}/${entry.id}`)"
+                  @ask-delete="onAskDelete(entry.id)"
+                  @confirm-delete="onConfirmDelete(entry.id)"
+                  @cancel-delete="onCancelDelete()"
+                />
+              </li>
+            </TransitionGroup>
+          </template>
+        </div>
+
+        <!-- Pre-fetch lead time (rootMargin: 400px) means the next page starts loading before the
+             sentinel is actually scrolled into view, so it's ready by the time the user reaches it. -->
+        <div v-if="journal.hasMoreEntries" ref="sentinel" class="mt-2 flex flex-col gap-2">
+          <template v-if="journal.loadingMore">
+            <EntryCardSkeleton v-for="i in 2" :key="i" />
+          </template>
+        </div>
+      </template>
     </div>
   </main>
 </template>

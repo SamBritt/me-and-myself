@@ -13,9 +13,11 @@ const emit = defineEmits<{ close: [] }>()
 const journal = useJournalStore()
 const router = useRouter()
 
+// The sidebar shows a fixed list, not infinite scroll — keep its original page size (50) rather
+// than the smaller default the full-page list now uses for incremental loading.
 watch(
   () => props.journalId,
-  (id) => journal.fetchEntries(id),
+  (id) => journal.fetchEntries(id, 50),
   { immediate: true },
 )
 
