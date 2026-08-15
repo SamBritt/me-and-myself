@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, X } from '@lucide/vue'
 import { useJournalStore } from '../../stores/journal'
@@ -12,14 +12,36 @@ const emit = defineEmits<{ close: [] }>()
 
 const journal = useJournalStore()
 const router = useRouter()
+const sentinel = ref<HTMLElement | null>(null)
 
-// The sidebar shows a fixed list, not infinite scroll — keep its original page size (50) rather
-// than the smaller default the full-page list now uses for incremental loading.
 watch(
   () => props.journalId,
-  (id) => journal.fetchEntries(id, 50),
+  (id) => journal.fetchEntries(id),
   { immediate: true },
 )
+
+// Same sentinel pattern as JournalListView.vue: the sentinel only exists once the loading/empty
+// branches resolve to the entry-list branch, so the observer is (re)attached reactively.
+let observer: IntersectionObserver | null = null
+
+watch(sentinel, (el, previousEl) => {
+  if (previousEl && observer) observer.unobserve(previousEl)
+  if (el) {
+    if (!observer) {
+      observer = new IntersectionObserver(
+        ([intersectionEntry]) => {
+          if (intersectionEntry.isIntersecting) journal.fetchMoreEntries(props.journalId)
+        },
+        { rootMargin: '400px' },
+      )
+    }
+    observer.observe(el)
+  }
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+})
 
 function onSelect(id: string) {
   router.push(`/journals/${props.journalId}/${id}`)
@@ -47,15 +69,21 @@ function onNewEntry() {
       <p v-else-if="journal.entries.length === 0" class="px-4 py-4 text-sm text-text-muted">
         No entries yet.
       </p>
-      <TransitionGroup v-else name="list" tag="ul" class="relative">
-        <SidebarEntryRow
-          v-for="entry in journal.entries"
-          :key="entry.id"
-          :entry="entry"
-          :active="entry.id === props.activeId"
-          @select="onSelect(entry.id)"
-        />
-      </TransitionGroup>
+      <template v-else>
+        <TransitionGroup name="list" tag="ul" class="relative">
+          <SidebarEntryRow
+            v-for="entry in journal.entries"
+            :key="entry.id"
+            :entry="entry"
+            :active="entry.id === props.activeId"
+            @select="onSelect(entry.id)"
+          />
+        </TransitionGroup>
+
+        <ul v-if="journal.hasMoreEntries" ref="sentinel">
+          <SidebarEntryRowSkeleton v-if="journal.loadingMore" />
+        </ul>
+      </template>
     </div>
   </aside>
 </template>
