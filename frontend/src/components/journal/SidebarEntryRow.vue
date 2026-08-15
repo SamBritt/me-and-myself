@@ -8,6 +8,7 @@ defineEmits<{ select: [] }>()
 
 <template>
   <li
+    :data-entry-id="entry.id"
     class="cursor-pointer border-b border-l-2 border-border px-4 py-3"
     :class="active ? 'border-l-primary bg-primary/10' : 'border-l-transparent hover:bg-bg'"
     @click="$emit('select')"

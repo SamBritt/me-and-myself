@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, X } from '@lucide/vue'
 import { useJournalStore } from '../../stores/journal'
@@ -13,12 +13,33 @@ const emit = defineEmits<{ close: [] }>()
 const journal = useJournalStore()
 const router = useRouter()
 const sentinel = ref<HTMLElement | null>(null)
+const listContainer = ref<HTMLElement | null>(null)
 
 watch(
   () => props.journalId,
-  (id) => journal.fetchEntries(id),
+  async (id) => {
+    await journal.fetchEntries(id)
+    await revealActiveEntry()
+  },
   { immediate: true },
 )
+
+// Refresh (or any deep link) lands here with only the first page loaded, so the entry the user
+// actually came to view may be several pages further down. Keep paging until it shows up — for a
+// journal-sized entry count this is a handful of fast round trips, not worth a dedicated backend
+// "anchor" query. Skip entirely if the entry's already in the first page: it's already on-screen
+// (or at least reachable without a fetch), so scrolling here would just yank focus away from a
+// normal in-list click.
+async function revealActiveEntry() {
+  const id = props.activeId
+  if (!id || journal.entries.some((e) => e.id === id)) return
+  while (!journal.entries.some((e) => e.id === id) && journal.hasMoreEntries) {
+    await journal.fetchMoreEntries(props.journalId)
+  }
+  if (!journal.entries.some((e) => e.id === id)) return
+  await nextTick()
+  listContainer.value?.querySelector(`[data-entry-id="${id}"]`)?.scrollIntoView({ block: 'center' })
+}
 
 // Same sentinel pattern as JournalListView.vue: the sentinel only exists once the loading/empty
 // branches resolve to the entry-list branch, so the observer is (re)attached reactively.
@@ -62,7 +83,7 @@ function onNewEntry() {
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto">
+    <div ref="listContainer" class="flex-1 overflow-y-auto">
       <ul v-if="journal.loadingEntries" class="relative">
         <SidebarEntryRowSkeleton v-for="i in 5" :key="i" />
       </ul>
